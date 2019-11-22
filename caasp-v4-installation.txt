@@ -1,0 +1,147 @@
+
+amach - 17.10.2019
+
+
+4.1.1 Install skuba - on the management node "caasp-01"
+https://documentation.suse.com/suse-caasp/4/single-html/caasp-deployment/#_install_skuba
+
+caasp-01:~ # sudo SUSEConnect -p sle-module-containers/15.1/x86_64 
+
+caasp-01:~ # sudo SUSEConnect -p caasp/4.0/x86_64
+
+caasp-01:~ # sudo zypper in -t pattern SUSE-CaaSP-Management
+
+
+---
+
+
+4.2 Cluster Deployment ( optional - I'm using autoyast for next two tasks)
+https://documentation.suse.com/suse-caasp/4/single-html/caasp-deployment/#_cluster_deployment
+
+-> copy ssh pub key to all nodes
+tux@caasp-01:~> for i in {2..9}; do echo $i; ssh-copy-id 192.168.10.3$i; done
+
+-> configure sudo for the user "tux" on all nodes
+tux@caasp-01:~> for i in {2..9}; do echo $i; ssh root@192.168.10.3$i 'echo "tux ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers'; done
+
+
+---
+
+
+4.2.1 Initializing the Cluster
+https://documentation.suse.com/suse-caasp/4/single-html/caasp-deployment/#_initializing_the_cluster
+
+(https://github.com/kubernetes/kubernetes/issues/33618)
+
+
+-> without using a load balancer - first master node IP/FQDN
+tux@caasp-01:~> skuba cluster init --control-plane caasp-04.soc.arch.suse.de my-cluster -v4
+
+
+---
+
+
+4.2.5 Cluster Bootstrap
+https://documentation.suse.com/suse-caasp/4/single-html/caasp-deployment/#cluster.bootstrap
+
+tux@caasp-01:~> cd my-cluster
+
+-> start ssh-agent
+
+tux@caasp-01:~/my-cluster> eval "$(ssh-agent)"
+
+
+-> add an SSH key manually
+
+tux@caasp-01:~/my-cluster> ssh-add /home/tux/.ssh/id_rsa
+
+
+-> bootstrap first master node - enter the IP/FQDN of your first master node
+
+tux@caasp-01:~/my-cluster> skuba node bootstrap --user tux --sudo --target caasp-04.soc.arch.suse.de master-01 -v4
+
+
+tux@caasp-01:~> mkdir -p $HOME/.kube
+tux@caasp-01:~> sudo scp 192.168.10.34:/etc/kubernetes/admin.conf $HOME/.kube/config
+tux@caasp-01:~> sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+.
+.
+I1017 12:33:32.419821    8818 ssh.go:190] stdout | clusterrole.rbac.authorization.k8s.io/oidc-dex created
+I1017 12:33:32.435957    8818 ssh.go:190] stdout | clusterrolebinding.rbac.authorization.k8s.io/oidc-dex created
+I1017 12:33:32.444979    8818 ssh.go:167] running command: "sudo sh -c 'rm -rf /tmp/dex.d'"
+I1017 12:33:32.525093    8818 states.go:40] === state dex.deploy applied successfully ===
+I1017 12:33:32.525116    8818 states.go:35] === applying state gangway.deploy ===
+I1017 12:33:32.534736    8818 config.go:38] loading configuration from "kubeadm-init.conf"
+I1017 12:33:32.702685    8818 deployments.go:59] uploading local file "addons/gangway/gangway.yaml" to remote file "/tmp/gangway.d/gangway.yaml"
+I1017 12:33:32.702754    8818 files.go:29] uploading to remote file "/tmp/gangway.d/gangway.yaml" with contents
+I1017 12:33:32.882700    8818 ssh.go:167] running command: "sudo sh -c 'kubectl --kubeconfig=/etc/kubernetes/admin.conf apply -f /tmp/gangway.d'"
+I1017 12:33:33.178776    8818 ssh.go:190] stdout | configmap/oidc-gangway-config created
+I1017 12:33:33.196549    8818 ssh.go:190] stdout | deployment.apps/oidc-gangway created
+I1017 12:33:33.218960    8818 ssh.go:190] stdout | service/oidc-gangway created
+I1017 12:33:33.233188    8818 ssh.go:190] stdout | serviceaccount/oidc-gangway created
+I1017 12:33:33.239737    8818 ssh.go:167] running command: "sudo sh -c 'rm -rf /tmp/gangway.d'"
+I1017 12:33:33.308036    8818 states.go:40] === state gangway.deploy applied successfully ===
+[bootstrap] successfully bootstrapped node "192.168.10.34" with Kubernetes: "1.15.2"
+
+---
+
+
+-> add two additional master nodes to the cluster
+
+tux@caasp-01:~/my-cluster> skuba node join --role master --user tux --sudo --target caasp-0{5,6}.soc.arch.suse.de master-0{2,3} -v4
+
+.
+.
+I1017 12:39:37.745537    8845 ssh.go:190] stdout | [mark-control-plane] Marking the node master-02 as control-plane by adding the taints [node-role.kubernetes.io/master:NoSchedule]
+I1017 12:39:38.499529    8845 ssh.go:190] stdout | 
+I1017 12:39:38.499548    8845 ssh.go:190] stdout | This node has joined the cluster and a new control plane instance was created:
+I1017 12:39:38.499554    8845 ssh.go:190] stdout | 
+I1017 12:39:38.499558    8845 ssh.go:190] stdout | * Certificate signing request was sent to apiserver and approval was received.
+I1017 12:39:38.499563    8845 ssh.go:190] stdout | * The Kubelet was informed of the new secure connection details.
+I1017 12:39:38.499568    8845 ssh.go:190] stdout | * Control plane (master) label and taint were applied to the new node.
+I1017 12:39:38.499573    8845 ssh.go:190] stdout | * The Kubernetes control plane instances scaled up.
+I1017 12:39:38.499581    8845 ssh.go:190] stdout | * A new etcd member was added to the local/stacked etcd cluster.
+I1017 12:39:38.499586    8845 ssh.go:190] stdout | 
+I1017 12:39:38.499590    8845 ssh.go:190] stdout | To start administering your cluster from this node, you need to run the following as a regular user:
+I1017 12:39:38.499595    8845 ssh.go:190] stdout | 
+I1017 12:39:38.499599    8845 ssh.go:190] stdout | 	mkdir -p $HOME/.kube
+I1017 12:39:38.499604    8845 ssh.go:190] stdout | 	sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+I1017 12:39:38.499610    8845 ssh.go:190] stdout | 	sudo chown $(id -u):$(id -g) $HOME/.kube/config
+I1017 12:39:38.499624    8845 ssh.go:190] stdout | 
+I1017 12:39:38.499629    8845 ssh.go:190] stdout | Run 'kubectl get nodes' to see this node join the cluster.
+I1017 12:39:38.499633    8845 ssh.go:190] stdout | 
+I1017 12:39:38.508145    8845 ssh.go:167] running command: "sudo sh -c 'rm /tmp/kubeadm-init.conf'"
+I1017 12:39:38.915935    8845 states.go:40] === state kubeadm.join applied successfully ===
+I1017 12:39:38.915954    8845 states.go:35] === applying state cni.cilium-update-configmap ===
+I1017 12:39:39.214824    8845 cilium.go:118] successfully annotated cilium daemonset with current timestamp, which will restart all cilium pods
+I1017 12:39:39.214846    8845 states.go:40] === state cni.cilium-update-configmap applied successfully ===
+I1017 12:39:39.214863    8845 states.go:35] === applying state skuba-update.start ===
+I1017 12:39:39.217289    8845 ssh.go:167] running command: "sudo sh -c 'systemctl enable --now skuba-update.timer'"
+I1017 12:39:39.403691    8845 ssh.go:190] stderr | Created symlink /etc/systemd/system/timers.target.wants/skuba-update.timer → /usr/lib/systemd/system/skuba-update.timer.
+I1017 12:39:39.716584    8845 states.go:40] === state skuba-update.start applied successfully ===
+[join] node successfully joined the cluster
+
+
+---
+
+
+-> add a worker to the cluster
+
+tux@caasp-01:~/my-cluster> skuba node join --role worker --user tux --sudo --target caasp-07.soc.arch.suse.de worker-01 -v4
+
+
+---
+
+-> verify that the nodes have been added
+
+tux@caasp-01:~/my-cluster> skuba cluster status
+NAME        OS-IMAGE                              KERNEL-VERSION           KUBELET-VERSION   CONTAINER-RUNTIME   HAS-UPDATES   HAS-DISRUPTIVE-UPDATES
+master-01   SUSE Linux Enterprise Server 15 SP1   4.12.14-197.18-default   v1.15.2           cri-o://1.15.0      <none>        <none>
+master-02   SUSE Linux Enterprise Server 15 SP1   4.12.14-197.18-default   v1.15.2           cri-o://1.15.0      <none>        <none>
+master-03   SUSE Linux Enterprise Server 15 SP1   4.12.14-197.18-default   v1.15.2           cri-o://1.15.0      <none>        <none>
+worker-01   SUSE Linux Enterprise Server 15 SP1   4.12.14-197.18-default   v1.15.2           cri-o://1.15.0      <none>        <none>
+
+
+---
+
