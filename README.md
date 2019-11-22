@@ -25,7 +25,7 @@ NETWORK: 2x Intel e1000e
 
 ---
 
-2x Haproxy nods:\
+2x Haproxy node:\
 CPU: 2\
 RAM: 4 GB\
 DISK: 1x 100 GB (QCOW2)\
@@ -33,7 +33,7 @@ NETWORK: 2x Intel e1000e
 
 ---
 
-3x Kubernetes master nods:\
+3x Kubernetes master node:\
 CPU: 2\
 RAM: 8 GB\
 DISK: 1x 100 GB (QCOW2)\
@@ -41,7 +41,7 @@ NETWORK: 2x Intel e1000e
 
 ---
 
-3x Kubernetes worker nods:\
+3x Kubernetes worker node:\
 CPU: 2\
 RAM: 8 GB\
 DISK: 1x 100 GB (QCOW2)\
