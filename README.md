@@ -11,7 +11,7 @@ RAM: 128 GB\
 Disk: 3.7 TB SATA - Raid 0
 
 Detailed KVM host setup:\
-https://github.com/andreas-mach/single_kvm_bmc/wiki
+https://github.com/andreas-mach/single_kvm_bmc/wiki/HowTo-setup-virtual-HOS-test-environment---%22entry-scale-kvm-ceph%22-input-model
 
 ---
 
