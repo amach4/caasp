@@ -1,0 +1,241 @@
+
+amach - 10.10.2019
+
+1. Install DHCP-Server
+https://documentation.suse.com/de-de/sles/15-SP1/single-html/SLES-deployment/#sec-deployment-dhcp-server
+
+
+tux@caasp-01:~> cat /etc/dhcpd.conf
+
+# The following lines are optional
+option domain-name "soc.arch.suse.de";
+option domain-name-servers 192.168.10.20;
+option routers 192.168.10.1;
+option ntp-servers 192.168.10.20;
+# The following lines are required
+option arch code 93 = unsigned integer 16; # RFC4578
+ddns-update-style none;
+default-lease-time 3600;
+subnet 192.168.10.0 netmask 255.255.255.0 {
+  next-server 192.168.10.31;
+  range 192.168.10.100 192.168.10.199;
+  default-lease-time 3600;
+  max-lease-time 3600;
+  if option arch = 00:07 or option arch = 00:09 {
+#    filename "/EFI/x86/grub.efi";
+    filename "/net/x86_64-efi/bootx64.efi";
+  }
+  else if option arch = 00:0b {
+    filename "/EFI/aarch64/bootaa64.efi";
+  }
+  else  {
+    filename "/BIOS/x86/pxelinux.0";
+  }
+}
+group {
+  host caasp-02 {
+    hardware ethernet 52:54:00:18:6f:87;
+    fixed-address 192.168.10.32;
+  }
+  host caasp-03 {
+    hardware ethernet 52:54:00:ec:fa:9d;
+    fixed-address 192.168.10.33;
+  }
+  host caasp-04 {
+    hardware ethernet 52:54:00:95:06:be;
+    fixed-address 192.168.10.34;
+  }
+  host caasp-05 {
+    hardware ethernet 52:54:00:36:da:b0;
+    fixed-address 192.168.10.35;
+  }
+  host caasp-06 {
+    hardware ethernet 52:54:00:97:9c:1a;
+    fixed-address 192.168.10.36;
+  }
+  host caasp-07 {
+    hardware ethernet 52:54:00:bd:2b:4f;
+    fixed-address 192.168.10.37;
+  }
+  host caasp-08 {
+    hardware ethernet 52:54:00:97:03:bd;
+    fixed-address 192.168.10.38;
+  }
+  host caasp-09 {
+    hardware ethernet 52:54:00:67:04:52;
+    fixed-address 192.168.10.39;
+  }
+}
+
+
+---
+
+
+2. Setup HTTP-Repositorys
+https://documentation.suse.com/de-de/sles/15-SP1/single-html/SLES-deployment/#sec-deployment-instserver-http
+
+tux@caasp-01:~> sudo zypper in yast2-http-server
+
+copy SLES 15 SP1 DVD 1 content to /srv/www/htdocs/sles15sp1/dvd1/
+
+
+---
+
+
+3. Install TFTP-Server
+https://documentation.suse.com/de-de/sles/15-SP1/single-html/SLES-deployment/#sec-deployment-tftp-server-install
+
+
+tux@caasp-01:~> sudo zypper in tftp
+
+(tux@caasp-01:~> sudo systemctl enable tftp.socket)
+
+tux@caasp-01:~> sudo zypper in tftpboot-installation-SLE-15-SP1-x86_64
+
+tux@caasp-01:~> cp -a /usr/share/tftpboot-installation/SLE-15-SP1-x86_64/* /srv/tftpboot/
+
+-> modify needed files as mentioned in /srv/tftpboot/README:
+
+  -> boot file used in /etc/dhcpd.conf: net/x86_64-efi/bootx64.efi
+  -> boot loader config file: net/grub.cfg
+
+
+exapmle for UEFI boot:
+
+tux@caasp-01:~> cat /srv/tftpboot/net/grub.cfg
+
+gfxmode=auto
+timeout=5
+default=1
+
+locale_dir=$prefix/grub.locale
+lang=en_US
+
+menuentry 'Autoyast - Installation of SLES 15 SP1' {
+  set gfxpayload=keep
+  echo 'Loading kernel ...'
+  linuxefi boot/x86_64/loader/linux instsys=tftp://192.168.10.31/boot/x86_64/root install=http://192.168.10.31/sles15sp1/dvd1/ autoyast=http://192.168.10.31/sles15sp1/autoyast.xml
+  echo 'Loading initrd ...'
+  initrdefi boot/x86_64/loader/initrd
+}
+
+---
+
+
+4. create Autoyast scripts
+
+-> set static IP
+caasp-01:/srv/www/htdocs/scripts # cat add_static_ip_eth0.sh
+
+##
+## set static IP Address for network interface "eth0"
+##
+
+# get ip settings
+ip_settings=$(ip addr show eth0 | grep '^ *inet ' | awk '{print$2}')
+
+# extract ip address
+ip_addr=$(echo ${ip_settings} | sed 's/\/[0-9]*//')
+
+# extract network prefix (mask)
+prefix=$(echo ${ip_settings} | sed 's/[0-9.]*\///')
+
+# set static address
+yast2 lan edit id=0 ip=${ip_addr} prefix=${prefix}
+
+---EOF---
+
+
+-> add tux ssh pub key
+caasp-01:/srv/www/htdocs/scripts # cat add_tux_ssh_pub_key.sh
+
+##
+## add ssh public key for user "tux"
+##
+
+#!/bin/bash
+
+#wget -nv ftp://music.arch.suse.de/others/master.pub -O /tmp/master.pub
+
+    if [ ! -e /home/tux/.ssh ];then
+        echo "Creating /home/tux/.ssh directory"
+        mkdir /home/tux/.ssh
+    fi
+    echo "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCvEebV0v0HED+Kk7HrkCAx4ElO4gcIxgChxo3h5GXFHSRvwu1hynYy2ThkYRKT2aASlXZWx7NdaXot9WLc3Bl+/G2D2/reIp4StUbNaPsOIQ4F/Xn5q442ULX1BiTOqSx9Ho07xFSV0C73qTvirszRnA7a4xeb/zpqa4ePJWqz2S5iKa3ciMAq0w+V5ezYcMPGOmBwvr3jUv5Ujq1Wa60AEL1DmFfV1/haIEwCr/ZDgLZPSVvEnQ8WKZeuK2P8BrZaUedjSMurQAX+qNNwp+oxFQhdIG7e8IteWNPOlbxRUC67h6a2nz3/R+SXmR+Z3k5YzpkzkybyCLXO/x2W/OFt tux@caasp-01" >> /home/tux/.ssh/authorized_keys
+
+---EOF---
+
+
+-> add user tux to /etc/sudoers file
+caasp-01:/srv/www/htdocs/scripts # cat add_tux_sudo.sh
+
+##
+## add user "tux" to /etc/sudoers file
+##
+
+#!/bin/sh
+SUDOERS_CONF=/etc/sudoers
+
+if grep -q "tux  ALL=(ALL) NOPASSWD:ALL" $SUDOERS_CONF >/dev/null 2>&1; then
+	echo -e "user tux already added to sudoers configuration"
+else
+	echo 'tux  ALL=(ALL) NOPASSWD:ALL' >> $SUDOERS_CONF
+fi
+
+exit 0
+
+---EOF---
+
+
+-> download and execute the scripts
+caasp-01:/srv/www/htdocs/scripts # cat after_install.sh
+
+#!/bin/bash
+##
+# This script is runnung after every autoinstallation and is called via the autoYast
+# profiles.
+##
+
+function log()
+{
+    logger -t after_install "$@"
+}
+
+wget http://caasp-01.soc.arch.suse.de/scripts/add_tux_sudo.sh
+sh add_tux_sudo.sh
+
+wget http://caasp-01.soc.arch.suse.de/scripts/add_tux_ssh_pub_key.sh
+sh add_tux_ssh_pub_key.sh
+
+wget http://caasp-01.soc.arch.suse.de/scripts/add_static_ip_eth0.sh
+sh add_static_ip_eth0.sh
+
+---EOF---
+
+
+---
+
+
+4. Enable systemd services:
+ 
+tux@caasp-01:~> sudo systemctl enable apache2
+
+tux@caasp-01:~> sudo systemctl enable dhcpd
+
+
+---
+
+
+Troubleshooting:
+
+-> verify content of /var/adm/scripts/*" and "/var/adm/logs/*" on each KVM domain
+
+-> verify during boot if client is requesting an IP address from DHCP server: tailf /var/log/messages
+
+
+todo:
+
+create autoyast control file according to the example file: caasp-01:/usr/share/caasp/autoyast/bare-metal/autoyast.xml 
+
+
+
