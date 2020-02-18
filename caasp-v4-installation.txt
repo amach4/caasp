@@ -35,7 +35,7 @@ https://documentation.suse.com/suse-caasp/4/single-html/caasp-deployment/#_initi
 
 
 -> without using a load balancer - first master node IP/FQDN
-tux@caasp-01:~> skuba cluster init --control-plane caasp-04.soc.arch.suse.de my-cluster -v4
+tux@caasp-01:~> skuba cluster init --control-plane caasp-04.example.com my-cluster -v4
 
 
 ---
@@ -58,7 +58,7 @@ tux@caasp-01:~/my-cluster> ssh-add /home/tux/.ssh/id_rsa
 
 -> bootstrap first master node - enter the IP/FQDN of your first master node
 
-tux@caasp-01:~/my-cluster> skuba node bootstrap --user tux --sudo --target caasp-04.soc.arch.suse.de master-01 -v4
+tux@caasp-01:~/my-cluster> skuba node bootstrap --user tux --sudo --target caasp-04.example.com master01 -v4
 
 
 tux@caasp-01:~> mkdir -p $HOME/.kube
@@ -89,11 +89,11 @@ I1017 12:33:33.308036    8818 states.go:40] === state gangway.deploy applied suc
 
 -> add two additional master nodes to the cluster
 
-tux@caasp-01:~/my-cluster> skuba node join --role master --user tux --sudo --target caasp-0{5,6}.soc.arch.suse.de master-0{2,3} -v4
+tux@caasp-01:~/my-cluster> skuba node join --role master --user tux --sudo --target caasp-0{5,6}.example.com master-0{2,3} -v4
 
 .
 .
-I1017 12:39:37.745537    8845 ssh.go:190] stdout | [mark-control-plane] Marking the node master-02 as control-plane by adding the taints [node-role.kubernetes.io/master:NoSchedule]
+I1017 12:39:37.745537    8845 ssh.go:190] stdout | [mark-control-plane] Marking the node master02 as control-plane by adding the taints [node-role.kubernetes.io/master:NoSchedule]
 I1017 12:39:38.499529    8845 ssh.go:190] stdout | 
 I1017 12:39:38.499548    8845 ssh.go:190] stdout | This node has joined the cluster and a new control plane instance was created:
 I1017 12:39:38.499554    8845 ssh.go:190] stdout | 
@@ -128,7 +128,7 @@ I1017 12:39:39.716584    8845 states.go:40] === state skuba-update.start applied
 
 -> add a worker to the cluster
 
-tux@caasp-01:~/my-cluster> skuba node join --role worker --user tux --sudo --target caasp-07.soc.arch.suse.de worker-01 -v4
+tux@caasp-01:~/my-cluster> skuba node join --role worker --user tux --sudo --target caasp-07.example.com worker01 -v4
 
 
 ---
@@ -137,10 +137,10 @@ tux@caasp-01:~/my-cluster> skuba node join --role worker --user tux --sudo --tar
 
 tux@caasp-01:~/my-cluster> skuba cluster status
 NAME        OS-IMAGE                              KERNEL-VERSION           KUBELET-VERSION   CONTAINER-RUNTIME   HAS-UPDATES   HAS-DISRUPTIVE-UPDATES
-master-01   SUSE Linux Enterprise Server 15 SP1   4.12.14-197.18-default   v1.15.2           cri-o://1.15.0      <none>        <none>
-master-02   SUSE Linux Enterprise Server 15 SP1   4.12.14-197.18-default   v1.15.2           cri-o://1.15.0      <none>        <none>
-master-03   SUSE Linux Enterprise Server 15 SP1   4.12.14-197.18-default   v1.15.2           cri-o://1.15.0      <none>        <none>
-worker-01   SUSE Linux Enterprise Server 15 SP1   4.12.14-197.18-default   v1.15.2           cri-o://1.15.0      <none>        <none>
+master01   SUSE Linux Enterprise Server 15 SP1   4.12.14-197.18-default   v1.15.2           cri-o://1.15.0      <none>        <none>
+master02   SUSE Linux Enterprise Server 15 SP1   4.12.14-197.18-default   v1.15.2           cri-o://1.15.0      <none>        <none>
+master03   SUSE Linux Enterprise Server 15 SP1   4.12.14-197.18-default   v1.15.2           cri-o://1.15.0      <none>        <none>
+worker01   SUSE Linux Enterprise Server 15 SP1   4.12.14-197.18-default   v1.15.2           cri-o://1.15.0      <none>        <none>
 
 
 ---
