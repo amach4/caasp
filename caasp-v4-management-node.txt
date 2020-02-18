@@ -8,7 +8,7 @@ https://documentation.suse.com/de-de/sles/15-SP1/single-html/SLES-deployment/#se
 tux@caasp-01:~> cat /etc/dhcpd.conf
 
 # The following lines are optional
-option domain-name "soc.arch.suse.de";
+option domain-name "example.com";
 option domain-name-servers 192.168.10.20;
 option routers 192.168.10.1;
 option ntp-servers 192.168.10.20;
@@ -201,13 +201,13 @@ function log()
     logger -t after_install "$@"
 }
 
-wget http://caasp-01.soc.arch.suse.de/scripts/add_tux_sudo.sh
+wget http://caasp-01.example.com/scripts/add_tux_sudo.sh
 sh add_tux_sudo.sh
 
-wget http://caasp-01.soc.arch.suse.de/scripts/add_tux_ssh_pub_key.sh
+wget http://caasp-01.example.com/scripts/add_tux_ssh_pub_key.sh
 sh add_tux_ssh_pub_key.sh
 
-wget http://caasp-01.soc.arch.suse.de/scripts/add_static_ip_eth0.sh
+wget http://caasp-01.example.com/scripts/add_static_ip_eth0.sh
 sh add_static_ip_eth0.sh
 
 ---EOF---
